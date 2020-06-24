@@ -72,12 +72,7 @@ func LoadConfig(filePath *string) (loaded loadedConfig, err error) {
 		return loadedConfig{}, err
 	}
 
-	loadedConf, err := createPluginsWithTomlConfig(md, conf)
-
-	if len(md.Undecoded()) > 0 {
-		fmt.Fprintf(stdout, "Some plugins were loaded but not used: %q\n", md.Undecoded())
-	}
-	return loadedConf, err
+	return createPluginsWithTomlConfig(md, conf)
 }
 
 func expandEnvVars(contents []byte) string {

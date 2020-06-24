@@ -2,7 +2,6 @@ package shim
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"os"
 	"strings"
@@ -16,30 +15,16 @@ import (
 )
 
 func TestShimWorks(t *testing.T) {
-	stdoutBytes := bytes.NewBufferString("")
-	stdout = stdoutBytes
+	stdoutReader, stdoutWriter := io.Pipe()
 
-	stdin, _ = io.Pipe() // hold the stdin pipe open
+	stdin, _ := io.Pipe() // hold the stdin pipe open
 
-	timeout := time.NewTimer(10 * time.Second)
-	metricProcessed, _ := runInputPlugin(t, 10*time.Millisecond)
+	metricProcessed, _ := runInputPlugin(t, 10*time.Millisecond, stdin, stdoutWriter, nil)
 
-	select {
-	case <-metricProcessed:
-	case <-timeout.C:
-		require.Fail(t, "Timeout waiting for metric to arrive")
-	}
-	for stdoutBytes.Len() == 0 {
-		select {
-		case <-timeout.C:
-			require.Fail(t, "Timeout waiting to read metric from stdout")
-			return
-		default:
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-
-	out := string(stdoutBytes.Bytes())
+	<-metricProcessed
+	r := bufio.NewReader(stdoutReader)
+	out, err := r.ReadString('\n')
+	require.NoError(t, err)
 	require.Contains(t, out, "\n")
 	metricLine := strings.Split(out, "\n")[0]
 	require.Equal(t, "measurement,tag=tag field=1i 1234000005678", metricLine)
@@ -49,11 +34,8 @@ func TestShimStdinSignalingWorks(t *testing.T) {
 	stdinReader, stdinWriter := io.Pipe()
 	stdoutReader, stdoutWriter := io.Pipe()
 
-	stdin = stdinReader
-	stdout = stdoutWriter
-
 	timeout := time.NewTimer(10 * time.Second)
-	metricProcessed, exited := runInputPlugin(t, 40*time.Second)
+	metricProcessed, exited := runInputPlugin(t, 40*time.Second, stdinReader, stdoutWriter, nil)
 
 	stdinWriter.Write([]byte("\n"))
 
@@ -73,7 +55,7 @@ func TestShimStdinSignalingWorks(t *testing.T) {
 	<-exited
 }
 
-func runInputPlugin(t *testing.T, interval time.Duration) (metricProcessed chan bool, exited chan bool) {
+func runInputPlugin(t *testing.T, interval time.Duration, stdin io.Reader, stdout, stderr io.Writer) (metricProcessed chan bool, exited chan bool) {
 	metricProcessed = make(chan bool)
 	exited = make(chan bool)
 	inp := &testInput{
@@ -81,6 +63,16 @@ func runInputPlugin(t *testing.T, interval time.Duration) (metricProcessed chan 
 	}
 
 	shim := New()
+	if stdin != nil {
+		shim.stdin = stdin
+	}
+	if stdout != nil {
+		shim.stdout = stdout
+	}
+	if stderr != nil {
+		shim.stderr = stderr
+	}
+
 	shim.AddInput(inp)
 	go func() {
 		err := shim.Run(interval)

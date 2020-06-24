@@ -57,7 +57,7 @@ func (s *Shim) RunInput(pollInterval time.Duration) error {
 		wg.Done()
 	}()
 
-	scanner := bufio.NewScanner(stdin)
+	scanner := bufio.NewScanner(s.stdin)
 	for scanner.Scan() {
 		// push a non-blocking message to trigger metric collection.
 		s.pushCollectMetricsRequest()
@@ -85,11 +85,11 @@ func (s *Shim) startGathering(ctx context.Context, input telegraf.Input, acc tel
 			return
 		case <-s.gatherPromptCh:
 			if err := input.Gather(acc); err != nil {
-				fmt.Fprintf(stderr, "failed to gather metrics: %s\n", err)
+				fmt.Fprintf(s.stderr, "failed to gather metrics: %s\n", err)
 			}
 		case <-t.C:
 			if err := input.Gather(acc); err != nil {
-				fmt.Fprintf(stderr, "failed to gather metrics: %s\n", err)
+				fmt.Fprintf(s.stderr, "failed to gather metrics: %s\n", err)
 			}
 		}
 	}

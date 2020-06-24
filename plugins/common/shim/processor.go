@@ -52,11 +52,11 @@ func (s *Shim) RunProcessor() error {
 		wg.Done()
 	}()
 
-	scanner := bufio.NewScanner(stdin)
+	scanner := bufio.NewScanner(s.stdin)
 	for scanner.Scan() {
 		m, err := parser.ParseLine(scanner.Text())
 		if err != nil {
-			fmt.Fprintf(stderr, "Failed to parse metric: %s\b", err)
+			fmt.Fprintf(s.stderr, "Failed to parse metric: %s\b", err)
 		}
 		s.Processor.Add(m, acc)
 	}

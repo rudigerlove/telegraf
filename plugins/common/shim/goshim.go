@@ -17,11 +17,8 @@ import (
 type empty struct{}
 
 var (
-	stdin         io.Reader = os.Stdin
-	stdout        io.Writer = os.Stdout
-	stderr        io.Writer = os.Stderr
-	forever                 = 100 * 365 * 24 * time.Hour
-	envVarEscaper           = strings.NewReplacer(
+	forever       = 100 * 365 * 24 * time.Hour
+	envVarEscaper = strings.NewReplacer(
 		`"`, `\"`,
 		`\`, `\\`,
 	)
@@ -40,6 +37,11 @@ type Shim struct {
 	Processor telegraf.StreamingProcessor
 	Output    telegraf.Output
 
+	// streams
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+
 	// outgoing metric channel
 	metricCh chan telegraf.Metric
 
@@ -51,6 +53,9 @@ type Shim struct {
 func New() *Shim {
 	return &Shim{
 		metricCh: make(chan telegraf.Metric, 1),
+		stdin:    os.Stdin,
+		stdout:   os.Stdout,
+		stderr:   os.Stderr,
 	}
 }
 
@@ -105,7 +110,7 @@ func (s *Shim) writeProcessedMetrics() error {
 				return fmt.Errorf("failed to serialize metric: %s", err)
 			}
 			// Write this to stdout
-			fmt.Fprint(stdout, string(b))
+			fmt.Fprint(s.stdout, string(b))
 		}
 	}
 }

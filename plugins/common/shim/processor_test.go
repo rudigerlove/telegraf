@@ -18,22 +18,21 @@ import (
 func TestProcessorShim(t *testing.T) {
 	p := &testProcessor{}
 
-	s := New()
-	err := s.AddProcessor(p)
-	require.NoError(t, err)
-
 	stdinReader, stdinWriter := io.Pipe()
 	stdoutReader, stdoutWriter := io.Pipe()
 
+	s := New()
 	// inject test into shim
-	stdin = stdinReader
-	stdout = stdoutWriter
+	s.stdin = stdinReader
+	s.stdout = stdoutWriter
+	err := s.AddProcessor(p)
+	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
-		err = s.RunProcessor()
+		err := s.RunProcessor()
 		require.NoError(t, err)
 		wg.Done()
 	}()

@@ -16,20 +16,18 @@ import (
 func TestOutputShim(t *testing.T) {
 	o := &testOutput{}
 
-	s := New()
-	err := s.AddOutput(o)
-	require.NoError(t, err)
-
 	stdinReader, stdinWriter := io.Pipe()
 
-	// inject test into shim
-	stdin = stdinReader
+	s := New()
+	s.stdin = stdinReader
+	err := s.AddOutput(o)
+	require.NoError(t, err)
 
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
-		err = s.RunOutput()
+		err := s.RunOutput()
 		require.NoError(t, err)
 		wg.Done()
 	}()
